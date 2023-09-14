@@ -36,7 +36,6 @@ def get_email_template(name, language=''):
     Function that returns an email template instance, from cache or DB.
     """
     use_cache = getattr(settings, 'POST_OFFICE_CACHE', True)
-    default_language = getattr(settings, 'POST_OFFICE_DEFAULT_LANGUAGE', 'en')
     if use_cache:
         use_cache = getattr(settings, 'POST_OFFICE_TEMPLATE_CACHE', True)
     if not use_cache:
@@ -55,7 +54,7 @@ def get_email_template(name, language=''):
                 cache.set(composite_name, email_template)
             except EmailTemplate.DoesNotExist:
                 # If translated email version  does not exist - try to use default language version
-                return EmailTemplate.objects.get(name=name, language=default_language)
+                return EmailTemplate.objects.get(name=name, default_template=None)
 
         return email_template
 
