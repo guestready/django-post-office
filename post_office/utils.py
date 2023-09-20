@@ -43,7 +43,7 @@ def get_email_template(name, language=''):
             return EmailTemplate.objects.get(name=name, language=language)
         except EmailTemplate.DoesNotExist:
             # If translated email version does not exist - use default language version
-            return EmailTemplate.objects.get(name=name, language=default_language)
+            return EmailTemplate.objects.get(name=name, default_template=None)
     else:
         composite_name = '%s:%s' % (name, language)
         email_template = cache.get(composite_name)
