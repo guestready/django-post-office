@@ -157,7 +157,7 @@ def cleanup_expired_mails(cutoff_date, delete_attachments=True, batch_size=1000)
     expired_emails_ids = Email.objects.filter(created__lt=cutoff_date).values_list('id', flat=True)
     email_id_batches = split_emails(expired_emails_ids, batch_size)
     total_deleted_emails = 0
-
+    
     for email_ids in email_id_batches:
         # Delete email and incr total_deleted_emails counter
         _, deleted_data = Email.objects.filter(id__in=email_ids).delete()
