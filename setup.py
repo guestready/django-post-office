@@ -49,8 +49,7 @@ setup(
     package_data={'': ['README.rst']},
     install_requires=[
         'bleach[css]',
-        'django>=2.2',
-        'jsonfield>=3.0',
+        'django>=3.2',
         'pytz',
     ],
     classifiers=[
@@ -66,6 +65,7 @@ setup(
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
         'Topic :: Communications :: Email',
         'Topic :: Internet :: WWW/HTTP',
         'Topic :: Software Development :: Libraries :: Python Modules',

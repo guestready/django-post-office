@@ -1,6 +1,23 @@
 Changelog
 =========
 
+Version 3.8.0 (2023-10-22)
+--------------------------
+* Added `BATCH_DELIVERY_TIMEOUT` that specifies the maximum time allowed for each batch to be delivered. Defaults to 180 seconds. Thanks @selwin!
+
+Version 3.7.1 (2023-08-08)
+--------------------------
+* Optimized a queryset in `get_queued()` that doesn't use indexes in Postgres. Thanks @marsha97!
+* Removed `date_hierarchy` option which causes admin to load slowly on DBs with a large number of emails. Thanks @selwin!
+* Optimized `cleanup_expired_mails()` so that deletes emails in smaller batches. Thanks @marsha97!
+
+Version 3.7.0 (2023-05-30)
+--------------------------
+* Changed JSON columns to use Django's `JSONField` and drop `jsonfield` dependency. Thanks @jrief!
+* Fixed saving HTML emails that have `quoted_printable`. Thanks @gabn88!
+* Fixes an issue where emails are rendered without context in Django's admin interface. Thanks @zagl!
+* This version no longer supports Django 3.1.
+
 Version 3.6.3 (2022-10-27)
 --------------------------
 * Fixed an issue where emails may not be rendered with context. Thanks @zagl!

@@ -96,7 +96,6 @@ class EmailAdmin(admin.ModelAdmin):
     list_display = ['truncated_message_id', 'to_display', 'shortened_subject', 'status', 'last_updated', 'scheduled_time', 'use_template']
     search_fields = ['to', 'subject']
     readonly_fields = ['message_id', 'render_subject', 'render_plaintext_body',  'render_html_body']
-    date_hierarchy = 'last_updated'
     inlines = [AttachmentInline, LogInline]
     list_filter = ['status', 'template__language', 'template__name']
     formfield_overrides = {
@@ -131,7 +130,7 @@ class EmailAdmin(admin.ModelAdmin):
         return False
 
     def shortened_subject(self, instance):
-        if instance.template:
+        if instance.context:
             template_cache_key = '_subject_template_' + str(instance.template_id)
             template = getattr(self, template_cache_key, None)
             if template is None:
