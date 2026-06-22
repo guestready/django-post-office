@@ -50,6 +50,33 @@ class ModelTest(TestCase):
         self.assertEqual(message.subject, 'Subject')
         self.assertEqual(message.body, 'Message')
 
+    def test_email_message_strips_newlines_from_subject(self):
+        """
+        Subjects with newlines must not crash sending: Django's
+        forbid_multi_line_headers raises BadHeaderError on '\r'/'\n'.
+        """
+        email = Email.objects.create(
+            to=['to@example.com'],
+            from_email='from@example.com',
+            subject='Line one\nLine two\r\nLine three',
+            message='Message',
+        )
+        message = email.email_message()
+        self.assertEqual(message.subject, 'Line one Line two Line three')
+        # Must not raise BadHeaderError when serialized:
+        message.message()
+
+    def test_email_message_strips_newlines_from_template_subject(self):
+        """Newlines introduced by template context must be stripped too."""
+        template = EmailTemplate.objects.create(subject='Hi {{ name }}', content='Content', html_content='')
+        email = Email.objects.create(
+            to=['to@example.com'],
+            from_email='from@example.com',
+            template=template,
+            context={'name': 'A\nB'},
+        )
+        self.assertEqual(email.email_message().subject, 'Hi A B')
+
     def test_email_message_render(self):
         """
         Ensure Email instance with template is properly rendered.

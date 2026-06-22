@@ -118,6 +118,11 @@ class Email(models.Model):
             multipart_template = None
             html_message = self.html_message
 
+        # Email subject headers must not contain newlines: Django's
+        # forbid_multi_line_headers raises BadHeaderError on '\r'/'\n'.
+        # Collapse any newlines to spaces so sending never fails.
+        subject = ' '.join(subject.splitlines())
+
         connection = connections[self.backend_alias or 'default']
         if isinstance(self.headers, dict) or self.expires_at or self.message_id:
             headers = dict(self.headers or {})
