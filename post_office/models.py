@@ -1,15 +1,17 @@
 import os
 
 from collections import namedtuple
+from contextlib import nullcontext
 from uuid import uuid4
 from email.mime.nonmultipart import MIMENonMultipart
 
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.db import models
 from django.utils.encoding import smart_str
 from django.utils.translation import pgettext_lazy, gettext_lazy as _
-from django.utils import timezone
+from django.utils import timezone, translation
 
 from post_office import cache
 from post_office.fields import CommaSeparatedEmailField
@@ -25,6 +27,26 @@ logger = setup_loghandlers('INFO')
 
 PRIORITY = namedtuple('PRIORITY', 'low medium high now')._make(range(4))
 STATUS = namedtuple('STATUS', 'sent failed queued requeued')._make(range(4))
+
+
+def template_language_override(template):
+    """
+    Returns a context manager that activates the language of the given
+    ``EmailTemplate`` while it is rendered, so that dates, numbers and
+    translated strings always come out in the language the template is
+    written in, never in the language that happens to be active in the
+    calling thread or the one that was requested from ``send()``.
+
+    A default template has an empty ``language``: it is written in the
+    site's default language, so ``LANGUAGE_CODE`` is activated. This is the
+    template ``send()`` falls back to when the requested translation does
+    not exist.
+
+    An email without a template is rendered in the currently active language.
+    """
+    if template is None:
+        return nullcontext()
+    return translation.override(template.language or settings.LANGUAGE_CODE)
 
 
 class Email(models.Model):
@@ -107,10 +129,11 @@ class Email(models.Model):
 
         if self.template is not None and self.context is not None:
             engine = get_template_engine()
-            subject = engine.from_string(self.template.subject).render(self.context)
-            plaintext_message = engine.from_string(self.template.content).render(self.context)
-            multipart_template = engine.from_string(self.template.html_content)
-            html_message = multipart_template.render(self.context)
+            with template_language_override(self.template):
+                subject = engine.from_string(self.template.subject).render(self.context)
+                plaintext_message = engine.from_string(self.template.content).render(self.context)
+                multipart_template = engine.from_string(self.template.html_content)
+                html_message = multipart_template.render(self.context)
 
         else:
             subject = smart_str(self.subject)

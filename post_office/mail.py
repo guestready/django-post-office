@@ -11,7 +11,7 @@ from multiprocessing.dummy import Pool as ThreadPool
 from .connections import connections
 from .lockfile import default_lockfile, FileLock, FileLocked
 from .logutils import setup_loghandlers
-from .models import Email, EmailTemplate, Log, PRIORITY, STATUS
+from .models import Email, EmailTemplate, Log, PRIORITY, STATUS, template_language_override
 from .settings import (
     get_available_backends,
     get_batch_delivery_timeout,
@@ -97,9 +97,10 @@ def create(
             html_message = template.html_content
 
         _context = Context(context or {})
-        subject = Template(subject).render(_context)
-        message = Template(message).render(_context)
-        html_message = Template(html_message).render(_context)
+        with template_language_override(template):
+            subject = Template(subject).render(_context)
+            message = Template(message).render(_context)
+            html_message = Template(html_message).render(_context)
 
         email = Email(
             from_email=sender,

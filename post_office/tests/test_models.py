@@ -10,7 +10,7 @@ from django.core.files.base import ContentFile
 from django.core.mail import EmailMessage, EmailMultiAlternatives
 from django.forms.models import modelform_factory
 from django.test import TestCase
-from django.utils import timezone
+from django.utils import timezone, translation
 
 from ..models import Email, Log, PRIORITY, STATUS, EmailTemplate, Attachment
 from ..mail import send
@@ -76,6 +76,34 @@ class ModelTest(TestCase):
             context={'name': 'A\nB'},
         )
         self.assertEqual(email.email_message().subject, 'Hi A B')
+
+    def test_email_message_renders_in_template_language(self):
+        """
+        With render_on_delivery, the template is rendered at delivery time
+        with its own language activated, not the delivering thread's.
+        """
+        content = '{% load i18n %}{% get_current_language as lang %}{{ lang }}'
+        default_template = EmailTemplate.objects.create(subject=content, content=content, html_content=content)
+        french_template = EmailTemplate.objects.create(
+            default_template=default_template, language='fr', subject=content, content=content, html_content=content
+        )
+        email = Email.objects.create(
+            to=['to@example.com'], from_email='from@example.com', template=french_template, context={}
+        )
+        with translation.override('de'):
+            message = email.email_message()
+        self.assertEqual(message.subject, 'fr')
+        self.assertEqual(message.body, 'fr')
+        self.assertEqual(message.alternatives[0][0], 'fr')
+
+        # A default template has no language: it is rendered in the site's
+        # default language
+        email = Email.objects.create(
+            to=['to@example.com'], from_email='from@example.com', template=default_template, context={}
+        )
+        with translation.override('de'), self.settings(LANGUAGE_CODE='en'):
+            message = email.email_message()
+        self.assertEqual(message.subject, 'en')
 
     def test_email_message_render(self):
         """
