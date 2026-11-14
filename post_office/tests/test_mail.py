@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
 from django.test import TestCase
 from django.test.utils import override_settings
-from django.utils import timezone
+from django.utils import timezone, translation
 
 from ..mail import _send_bulk, create, get_queued, send, send_many, send_queued
 from ..models import PRIORITY, STATUS, Attachment, Email, EmailTemplate
@@ -413,6 +413,57 @@ class MailTest(TestCase):
             render_on_delivery=True,
         )
         self.assertEqual(email.template.language, 'ru')
+
+    @override_settings(LANGUAGE_CODE='en', LANGUAGES=(('en', 'English'), ('fr', 'French'), ('de', 'German')))
+    def test_send_renders_in_template_language(self):
+        """
+        A translated template is rendered with its own language activated,
+        whatever language is active in the calling thread.
+        """
+        content = '{% load i18n %}{% get_current_language as lang %}{{ lang }} {{ day|date:"F" }}'
+        template = EmailTemplate.objects.create(subject=content, content=content, html_content=content)
+        EmailTemplate.objects.create(
+            default_template=template, language='fr', subject=content, content=content, html_content=content
+        )
+        context = {'day': timezone.datetime(2026, 1, 15)}
+
+        with translation.override('de'):
+            email = send(
+                recipients=['to@example.com'],
+                sender='from@example.com',
+                template=template,
+                context=context,
+                language='fr',
+            )
+            # The caller's language is restored after rendering
+            self.assertEqual(translation.get_language(), 'de')
+        self.assertEqual(email.subject, 'fr janvier')
+        self.assertEqual(email.message, 'fr janvier')
+        self.assertEqual(email.html_message, 'fr janvier')
+
+        # A default template has no language: it is rendered in the site's
+        # default language
+        with translation.override('de'):
+            email = send(recipients=['to@example.com'], sender='from@example.com', template=template, context=context)
+        self.assertEqual(email.subject, 'en January')
+
+        # When the translation is missing, send falls back to the default
+        # template: it must be rendered in the default language, not in the
+        # requested one nor in the caller's
+        with translation.override('de'):
+            email = send(
+                recipients=['to@example.com'],
+                sender='from@example.com',
+                template=template,
+                context=context,
+                language='es',
+            )
+        self.assertEqual(email.subject, 'en January')
+
+        # An email without a template keeps the caller's language
+        with translation.override('de'):
+            email = send(recipients=['to@example.com'], sender='from@example.com', subject=content, context=context)
+        self.assertEqual(email.subject, 'de Januar')
 
     def test_send_bulk_with_faulty_template(self):
         template = EmailTemplate.objects.create(
